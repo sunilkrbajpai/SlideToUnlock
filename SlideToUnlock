@@ -1,0 +1,136 @@
+package com.healthkart.healthkart.revamp.consult
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import com.healthkart.healthkart.revamp.consult.consultPage.ConsultPageViewModel
+import com.healthkart.healthkart.revamp.ui.theme.ColorList
+import kotlin.math.roundToInt
+
+enum class State {
+  Start, End
+}
+
+@ExperimentalAnimationApi
+@ExperimentalMaterialApi
+@Composable
+fun SlideTodo(
+  modifier: Modifier = Modifier,
+  slideHeight: Dp = 60.dp,
+  slideWidth: Dp = 60.dp,
+  slideColor: Color,
+  refreshViewViewModel: ConsultPageViewModel,
+  navigationIcon: @Composable () -> Unit,
+  navigationIconPadding: Dp = 0.dp,
+  endIcon: @Composable () -> Unit,
+  widthAnimationMillis: Int = 1000,
+  elevation: Dp = 0.dp,
+  swipeAbleState: SwipeableState<State>
+) {
+  val iconSize = slideHeight - 10.dp
+
+  val slideDistance = with(LocalDensity.current) {
+    (slideWidth - iconSize - 15.dp).toPx()
+  }
+
+  var flag by remember { mutableStateOf(iconSize) }
+
+  if (swipeAbleState.currentValue == State.End) {
+    flag = 0.dp
+//    refreshViewViewModel.isConsultRecommendedProductsUnlocked = true
+  }
+
+  val iconSizeAnimation by animateDpAsState(targetValue = flag, tween(1000))
+
+//  val textAlpha by animateFloatAsState(
+//    targetValue = if (swipeAbleState.offset.value != 0f) (1 - swipeAbleState.progress.fraction) else 1f
+//  )
+
+  val width by animateDpAsState(
+    targetValue = if (iconSizeAnimation == 0.dp) slideHeight else slideWidth,
+    tween(widthAnimationMillis)
+  )
+
+  AnimatedVisibility(
+    visible = width != slideHeight,
+    enter = fadeIn(
+      initialAlpha = 0f,
+      animationSpec = tween(1000, easing = LinearEasing, delayMillis = 1000)
+    ),
+    exit = fadeOut(
+      targetAlpha = 0f,
+      animationSpec = tween(1000, easing = LinearEasing, delayMillis = 1000)
+    )
+  ) {
+    Surface(
+      shape = CircleShape,
+      modifier = modifier
+        .height(slideHeight)
+        .width(width),
+      color = slideColor,
+      elevation = elevation
+    ) {
+      Box(
+        modifier = Modifier
+          .padding(5.dp),
+      ) {
+        Box(
+          modifier = Modifier.fillMaxSize(),
+          contentAlignment = Alignment.CenterStart
+        ) {
+          Surface(
+            shape = CircleShape,
+            color = ColorList.Turquoise100,
+            modifier = Modifier
+              .size(iconSizeAnimation)
+              .padding(navigationIconPadding)
+              .swipeable(
+                state = swipeAbleState,
+                anchors = mapOf(
+                  0f to State.Start,
+                  slideDistance to State.End
+                ),
+                thresholds = { _, _ -> FractionalThreshold(0.9f) },
+                orientation = Orientation.Horizontal
+              )
+              .offset {
+                IntOffset(swipeAbleState.offset.value.roundToInt(), 0)
+              },
+          ) {
+            navigationIcon()
+          }
+        }
+        AnimatedVisibility(visible = width == slideHeight) {
+          Box(
+            modifier = Modifier
+              .fillMaxSize(),
+            contentAlignment = Alignment.Center
+          ) {
+            Surface(
+              modifier = Modifier.size(iconSize),
+              color = Color.Transparent
+            ) {
+              endIcon()
+            }
+          }
+        }
+      }
+    }
+  }
+}
